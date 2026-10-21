@@ -9,18 +9,36 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
-    :root { --bg-color: #0f0f15; --surface-color: #1a1b26; --primary-color: #4a9eff; --text-main: #e2e8f0; --text-muted: #94a3b8; --user-msg-bg: #2a3142; --ai-msg-bg: #1e1e2e; }
+    :root { --bg-color: #0f0f15; --surface-color: #1a1b26; --primary-color: #4a9eff; --text-main: #e2e8f0; --text-muted: #94a3b8; --user-msg-bg: #2a3142; --ai-msg-bg: #1e1e2e; --sidebar-bg: #14151f; }
     body { background-color: var(--bg-color); color: var(--text-main); height: 100dvh; display: flex; flex-direction: column; overflow: hidden; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
     
     svg { stroke: currentColor; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
     
+    /* ===== Sidebar / Drawer ===== */
+    #sidebar { position: fixed; top: 0; left: -280px; width: 280px; height: 100dvh; background-color: var(--sidebar-bg); z-index: 1001; transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: flex; flex-direction: column; border-right: 1px solid #1f2937; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); box-shadow: 5px 0 15px rgba(0,0,0,0.5); }
+    #sidebar.open { left: 0; }
+    #overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100dvh; background: rgba(0,0,0,0.6); z-index: 1000; display: none; backdrop-filter: blur(2px); }
+    #overlay.open { display: block; }
+
+    .sidebar-header { padding: 15px; border-bottom: 1px solid #1f2937; display: flex; justify-content: space-between; align-items: center; }
+    .new-chat-btn { display: flex; align-items: center; gap: 8px; background: #2a3142; color: white; border: 1px solid #3b82f6; padding: 10px 15px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; width: 100%; justify-content: center; transition: 0.2s; }
+    .new-chat-btn:hover { background: #3b82f6; }
+    .new-chat-btn svg { width: 16px; height: 16px; }
+    .close-sidebar-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 5px; display: flex; align-items: center; justify-content: center; }
+    
+    #chatList { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 5px; }
+    .chat-item { padding: 12px 15px; border-radius: 8px; cursor: pointer; font-size: 14px; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 10px; transition: 0.2s; }
+    .chat-item:hover { background: #1f2937; }
+    .chat-item.active { background: #2a3142; border-left: 3px solid #4a9eff; }
+    .chat-item svg { width: 16px; height: 16px; flex-shrink: 0; color: var(--text-muted); }
+
     /* ===== Header ===== */
     .header { display: flex; align-items: center; justify-content: space-between; padding: 15px 20px; background-color: var(--bg-color); border-bottom: 1px solid #1f2937; z-index: 10; flex-shrink: 0; }
     .header h1 { font-size: 18px; font-weight: 700; letter-spacing: 0.5px; color: #ffffff; display: flex; align-items: center; gap: 8px; }
-    .header-buttons { display: flex; gap: 15px; align-items: center; }
+    .header-buttons { display: flex; gap: 12px; align-items: center; }
     .header-buttons button { background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 5px; display: flex; justify-content: center; align-items: center; transition: color 0.2s; }
     .header-buttons button:hover { color: #ffffff; }
-    .header-buttons svg { width: 20px; height: 20px; }
+    .header-buttons svg { width: 22px; height: 22px; }
     
     /* ===== Chat Container ===== */
     .chat-container { flex: 1; min-height: 0; overflow-y: auto; padding: 20px; padding-bottom: 30px; display: flex; flex-direction: column; gap: 24px; scroll-behavior: smooth; }
@@ -28,7 +46,6 @@
     @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     .message.user { align-self: flex-end; flex-direction: row-reverse; }
     
-    /* 🟢 Premium Avatars */
     .avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; justify-content: center; align-items: center; flex-shrink: 0; font-weight: bold; }
     .ai .avatar { background: linear-gradient(135deg, #8b5cf6, #3b82f6); box-shadow: 0 0 12px rgba(139, 92, 246, 0.4); border: 1px solid #a78bfa; color: white; }
     .ai .avatar svg { width: 18px; height: 18px; }
@@ -42,12 +59,11 @@
     
     .chat-image { max-width: 100%; border-radius: 8px; margin-bottom: 8px; display: block; border: 1px solid #2a3142; }
 
-    /* ===== Image Preview Area ===== */
+    /* ===== Input Area ===== */
     #imagePreviewContainer { display: none; padding: 10px 15px; background-color: var(--surface-color); border-top: 1px solid #1f2937; align-items: center; gap: 10px; }
     #imagePreview { height: 60px; width: 60px; object-fit: cover; border-radius: 8px; border: 1px solid #2a3142; }
     .remove-img-btn { background: #ff6b4a; color: white; border: none; border-radius: 50%; width: 24px; height: 24px; font-size: 14px; cursor: pointer; display: flex; justify-content: center; align-items: center; }
 
-    /* ===== Input Area ===== */
     .input-area { padding: 10px 15px; padding-bottom: max(10px, env(safe-area-inset-bottom, 15px)); background-color: var(--bg-color); flex-shrink: 0; }
     .input-box { background-color: var(--surface-color); border: 1px solid #2a3142; border-radius: 20px; padding: 8px 12px; display: flex; align-items: flex-end; gap: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
     .input-box textarea { flex: 1; background: none; border: none; color: var(--text-main); font-size: 15px; resize: none; max-height: 100px; outline: none; padding-top: 8px; line-height: 1.4; }
@@ -69,11 +85,41 @@
     .typing-dots span:nth-child(1) { animation-delay: -0.32s; }
     .typing-dots span:nth-child(2) { animation-delay: -0.16s; }
     @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+
+    /* Modal */
+    #settingsModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; justify-content: center; align-items: center; padding: 20px; backdrop-filter: blur(5px); }
   </style>
 </head>
 <body>
+
+  <!-- Sidebar / Chat List -->
+  <div id="overlay" onclick="toggleSidebar()"></div>
+  <div id="sidebar">
+    <div class="sidebar-header">
+      <span style="font-weight: 700; color: white;">Chats</span>
+      <button class="close-sidebar-btn" onclick="toggleSidebar()">
+        <svg viewBox="0 0 24 24" width="24" height="24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+    <div style="padding: 10px;">
+      <button class="new-chat-btn" onclick="createNewChat()">
+        <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        New Chat
+      </button>
+    </div>
+    <div id="chatList">
+      <!-- Chat items will be rendered here -->
+    </div>
+  </div>
+
+  <!-- Main Header -->
   <div class="header">
-    <h1>Jarvis AI</h1>
+    <div style="display: flex; align-items: center; gap: 15px;">
+      <button onclick="toggleSidebar()" style="color: white;">
+        <svg viewBox="0 0 24 24"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+      </button>
+      <h1>Jarvis AI</h1>
+    </div>
     <div class="header-buttons">
       <button id="voiceOutputBtn" title="Toggle Voice Output">
         <svg id="speakerIcon" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>
@@ -84,20 +130,18 @@
     </div>
   </div>
 
+  <!-- Chat Area -->
   <div class="chat-container" id="chatContainer">
-    <div class="message ai">
-      <div class="avatar">
-        <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>
-      </div>
-      <div class="message-content">Hello Sir. I am your new Jarvis. I can help you with Coding, Writing, and general questions. You can also send me images! <br><br>How may I assist you today?</div>
-    </div>
+    <!-- Messages load here -->
   </div>
 
+  <!-- Image Preview -->
   <div id="imagePreviewContainer">
     <img id="imagePreview" src="" alt="Preview">
     <button class="remove-img-btn" id="removeImageBtn">✕</button>
   </div>
 
+  <!-- Input Area -->
   <div class="input-area">
     <div class="input-box">
       <button class="action-btn" id="imageBtn" title="Attach Image">
@@ -117,11 +161,20 @@
     </div>
   </div>
 
-  <div id="settingsModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center; padding: 20px; backdrop-filter: blur(5px);">
+  <!-- Settings Modal -->
+  <div id="settingsModal">
     <div style="background: var(--surface-color); padding: 25px; border-radius: 15px; width: 100%; max-width: 400px; border: 1px solid #2a3142;">
       <h2 style="margin-bottom: 15px; color: white; font-size: 18px;">Settings</h2>
+      
       <label style="display: block; color: var(--text-muted); margin-bottom: 5px; font-size: 14px;">Groq API Key:</label>
-      <input type="password" id="apiKeyInput" placeholder="gsk_..." style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #2a3142; background: #0f1419; color: white; margin-bottom: 20px;">
+      <input type="password" id="apiKeyInput" placeholder="gsk_..." style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #2a3142; background: #0f1419; color: white; margin-bottom: 15px;">
+      
+      <label style="display: block; color: var(--text-muted); margin-bottom: 5px; font-size: 14px;">Voice Input Language:</label>
+      <select id="voiceLangInput" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #2a3142; background: #0f1419; color: white; margin-bottom: 20px; outline: none;">
+        <option value="en-US">English (US)</option>
+        <option value="bn-BD">Bengali (বাংলা)</option>
+      </select>
+
       <div style="display: flex; gap: 10px;">
         <button id="cancelSettings" style="flex: 1; padding: 12px; border-radius: 8px; border: none; background: #2a3142; color: white; font-weight: bold; cursor: pointer;">Cancel</button>
         <button id="saveSettings" style="flex: 1; padding: 12px; border-radius: 8px; border: none; background: #4a9eff; color: white; font-weight: bold; cursor: pointer;">Save</button>
@@ -130,6 +183,7 @@
   </div>
 
   <script>
+    // UI Elements
     const chatContainer = document.getElementById('chatContainer');
     const chatInput = document.getElementById('chatInput');
     const sendBtn = document.getElementById('sendBtn');
@@ -139,6 +193,7 @@
     const apiKeyInput = document.getElementById('apiKeyInput');
     const saveSettingsBtn = document.getElementById('saveSettings');
     const cancelSettingsBtn = document.getElementById('cancelSettings');
+    const voiceLangInput = document.getElementById('voiceLangInput');
     
     const imageBtn = document.getElementById('imageBtn');
     const imageInput = document.getElementById('imageInput');
@@ -148,13 +203,138 @@
     const voiceOutputBtn = document.getElementById('voiceOutputBtn');
     const speakerIcon = document.getElementById('speakerIcon');
     const micIcon = document.getElementById('micIcon');
+    
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('overlay');
+    const chatListContainer = document.getElementById('chatList');
 
+    // State Variables
     let apiKey = localStorage.getItem('jarvis_groq_key') || "";
+    let voiceLang = localStorage.getItem('jarvis_voice_lang') || "en-US";
     let isVoiceInputActive = false;
     let isVoiceOutputEnabled = false;
     let attachedImageBase64 = null;
-    let chatHistory = []; 
     
+    // Chat Sessions Storage
+    let chatSessions = JSON.parse(localStorage.getItem('jarvis_chat_sessions')) || [];
+    let activeChatId = localStorage.getItem('jarvis_active_chat_id') || null;
+
+    // --- Functions ---
+    
+    function toggleSidebar() {
+      sidebar.classList.toggle('open');
+      overlay.classList.toggle('open');
+    }
+
+    function saveSessionsToStorage() {
+      localStorage.setItem('jarvis_chat_sessions', JSON.stringify(chatSessions));
+      localStorage.setItem('jarvis_active_chat_id', activeChatId);
+    }
+
+    function createNewChat() {
+      const newId = Date.now().toString();
+      const newSession = {
+        id: newId,
+        title: "New Chat",
+        messages: []
+      };
+      chatSessions.unshift(newSession);
+      activeChatId = newId;
+      saveSessionsToStorage();
+      renderChatList();
+      loadChatMessages();
+      if(window.innerWidth < 768) toggleSidebar(); 
+    }
+
+    function switchChat(id) {
+      activeChatId = id;
+      saveSessionsToStorage();
+      renderChatList();
+      loadChatMessages();
+      if(window.innerWidth < 768) toggleSidebar();
+    }
+
+    function renderChatList() {
+      chatListContainer.innerHTML = "";
+      chatSessions.forEach(session => {
+        const div = document.createElement('div');
+        div.classList.add('chat-item');
+        if (session.id === activeChatId) div.classList.add('active');
+        
+        div.innerHTML = `<svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg> <span>${session.title}</span>`;
+        div.onclick = () => switchChat(session.id);
+        chatListContainer.appendChild(div);
+      });
+    }
+
+    function getActiveSession() {
+      return chatSessions.find(s => s.id === activeChatId);
+    }
+
+    function loadChatMessages() {
+      chatContainer.innerHTML = "";
+      const session = getActiveSession();
+      
+      if (!session || session.messages.length === 0) {
+        addMessageUI("Hello Sir. I am your new Jarvis. How may I assist you today?", 'ai');
+      } else {
+        session.messages.forEach(msg => {
+          if (msg.role === 'user') {
+             if (typeof msg.content === 'string') {
+                 addMessageUI(msg.content, 'user');
+             } else if (Array.isArray(msg.content)) {
+                 const imgPart = msg.content.find(c => c.type === 'image_url');
+                 const textPart = msg.content.find(c => c.type === 'text');
+                 addMessageUI(textPart ? textPart.text : "Image", 'user', imgPart ? imgPart.image_url.url : null);
+             }
+          } else if (msg.role === 'assistant') {
+             addMessageUI(msg.content, 'ai');
+          }
+        });
+      }
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    // --- Swipe Gesture Logic ---
+    let touchStartX = 0;
+    let touchStartY = 0;
+
+    document.addEventListener('touchstart', e => {
+      touchStartX = e.changedTouches[0].screenX;
+      touchStartY = e.changedTouches[0].screenY;
+    }, { passive: true });
+
+    document.addEventListener('touchend', e => {
+      let touchEndX = e.changedTouches[0].screenX;
+      let touchEndY = e.changedTouches[0].screenY;
+      handleSwipe(touchStartX, touchStartY, touchEndX, touchEndY);
+    }, { passive: true });
+
+    function handleSwipe(startX, startY, endX, endY) {
+      const deltaX = endX - startX;
+      const deltaY = endY - startY;
+
+      // Ensure the swipe is more horizontal than vertical (prevents triggering during scroll)
+      if (Math.abs(deltaX) > Math.abs(deltaY)) {
+        
+        // 1. Swipe Right to Open (Must start from left edge, e.g., within 40px)
+        if (deltaX > 50 && startX < 40) {
+          if (!sidebar.classList.contains('open')) {
+            toggleSidebar();
+          }
+        }
+        
+        // 2. Swipe Left to Close (Anywhere on screen if sidebar is open)
+        else if (deltaX < -50) {
+          if (sidebar.classList.contains('open')) {
+            toggleSidebar();
+          }
+        }
+      }
+    }
+
+    // --- Standard Chat Logic ---
+
     chatInput.addEventListener('focus', () => {
       setTimeout(() => { chatContainer.scrollTop = chatContainer.scrollHeight; }, 300); 
     });
@@ -197,7 +377,6 @@
     if (SpeechRecognition) {
       recognition = new SpeechRecognition();
       recognition.continuous = false;
-      recognition.lang = 'en-US';
       recognition.interimResults = false;
       
       recognition.onstart = () => { 
@@ -234,10 +413,11 @@
     voiceBtn.addEventListener('click', () => {
       if (isVoiceInputActive) { recognition.stop(); return; }
       if (!SpeechRecognition) { alert("Voice recognition is not supported."); return; }
+      recognition.lang = voiceLang;
       try { recognition.start(); } catch(e) {}
     });
 
-    function addMessage(text, sender, imageUrl = null) {
+    function addMessageUI(text, sender, imageUrl = null) {
       const msgDiv = document.createElement('div'); msgDiv.classList.add('message', sender);
       
       const avatarDiv = document.createElement('div'); avatarDiv.classList.add('avatar');
@@ -286,32 +466,37 @@
       if (!text && !attachedImageBase64) return;
       if (!apiKey) { alert("Please set your Groq API Key in Settings first!"); return; }
 
+      const session = getActiveSession();
+      if(!session) return;
+
       const currentImage = attachedImageBase64;
-      addMessage(text || "Here is an image.", 'user', currentImage);
+      addMessageUI(text || "Here is an image.", 'user', currentImage);
       
       let messageContent = text;
       let modelToUse = "openai/gpt-oss-120b";
       let messagesPayload = [];
 
       if (currentImage) {
-        // 🟢 নতুন ভিশন মডেল ব্যবহার
         modelToUse = "qwen/qwen3.8-27b"; 
         messageContent = [
           { type: "text", text: text || "Describe this image." },
           { type: "image_url", image_url: { url: currentImage } }
         ];
-        // 🟢 ছবির ক্ষেত্রে chatHistory বাদ দেওয়া হলো
         messagesPayload = [
-          { role: "system", content: "You are Jarvis, a highly intelligent AI assistant. Analyze the image carefully." },
+          { role: "system", content: "You are Jarvis, an AI assistant. Analyze the image carefully." },
           { role: "user", content: messageContent }
         ];
       } else {
-        // 🟢 টেক্সটের ক্ষেত্রে chatHistory ব্যবহার করা হলো
-        chatHistory.push({ role: "user", content: text });
         messagesPayload = [
           { role: "system", content: "You are Jarvis, a highly intelligent AI assistant. You excel at coding and writing. You are helpful, concise, and professional. Always format code clearly." },
-          ...chatHistory
+          ...session.messages,
+          { role: "user", content: text }
         ];
+      }
+
+      if (session.messages.length === 0) {
+        session.title = text ? (text.length > 20 ? text.substring(0, 20) + "..." : text) : "Image Chat";
+        renderChatList();
       }
 
       chatInput.value = ''; chatInput.style.height = 'auto';
@@ -325,7 +510,7 @@
           headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
           body: JSON.stringify({
             model: modelToUse,
-            messages: messagesPayload, // 🟢 ডাইনামিক পেলোড
+            messages: messagesPayload,
             temperature: 0.7, 
             max_tokens: 2048
           })
@@ -336,32 +521,57 @@
 
         const aiResponse = data.choices[0].message.content;
         removeTypingIndicator();
-        addMessage(aiResponse, 'ai');
+        addMessageUI(aiResponse, 'ai');
         
-        if (!currentImage) {
-          chatHistory.push({ role: "assistant", content: aiResponse });
-        }
+        session.messages.push({ role: "user", content: currentImage ? messageContent : text });
+        session.messages.push({ role: "assistant", content: aiResponse });
+        
+        chatSessions = chatSessions.filter(s => s.id !== activeChatId);
+        chatSessions.unshift(session);
+        
+        saveSessionsToStorage();
+        renderChatList();
         
         speakText(aiResponse);
       } catch (error) {
         removeTypingIndicator();
-        addMessage("Error: " + error.message, 'ai');
+        addMessageUI("Error: " + error.message, 'ai');
       } finally {
         sendBtn.disabled = false;
         chatInput.focus();
       }
     }
 
+    // Settings Logic
     sendBtn.addEventListener('click', handleSend);
     chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } });
-    settingsBtn.addEventListener('click', () => { apiKeyInput.value = apiKey; settingsModal.style.display = 'flex'; });
+    settingsBtn.addEventListener('click', () => { apiKeyInput.value = apiKey; voiceLangInput.value = voiceLang; settingsModal.style.display = 'flex'; });
     cancelSettingsBtn.addEventListener('click', () => { settingsModal.style.display = 'none'; });
     saveSettingsBtn.addEventListener('click', () => {
       apiKey = apiKeyInput.value.trim();
+      voiceLang = voiceLangInput.value;
       localStorage.setItem('jarvis_groq_key', apiKey);
+      localStorage.setItem('jarvis_voice_lang', voiceLang);
       settingsModal.style.display = 'none';
-      if(apiKey) addMessage("API Key saved successfully. I am ready to help you, Sir.", 'ai');
+      if(apiKey) addMessageUI("Settings saved successfully. I am ready to help you, Sir.", 'ai');
     });
+
+    // Init App
+    function initApp() {
+      if(chatSessions.length === 0) {
+        createNewChat();
+      } else {
+        if(!activeChatId || !chatSessions.find(s => s.id === activeChatId)) {
+          activeChatId = chatSessions[0].id;
+          saveSessionsToStorage();
+        }
+        renderChatList();
+        loadChatMessages();
+      }
+    }
+    
+    initApp();
+
   </script>
 </body>
 </html>
