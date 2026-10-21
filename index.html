@@ -30,23 +30,9 @@
     
     /* 🟢 Premium Avatars */
     .avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; justify-content: center; align-items: center; flex-shrink: 0; font-weight: bold; }
-    
-    /* Jarvis Profile */
-    .ai .avatar { 
-      background: linear-gradient(135deg, #8b5cf6, #3b82f6); 
-      box-shadow: 0 0 12px rgba(139, 92, 246, 0.4); 
-      border: 1px solid #a78bfa;
-      color: white;
-    }
+    .ai .avatar { background: linear-gradient(135deg, #8b5cf6, #3b82f6); box-shadow: 0 0 12px rgba(139, 92, 246, 0.4); border: 1px solid #a78bfa; color: white; }
     .ai .avatar svg { width: 18px; height: 18px; }
-    
-    /* User Profile */
-    .user .avatar { 
-      background: #1a1b26; 
-      border: 1px solid #3b82f6; 
-      box-shadow: 0 0 10px rgba(59, 130, 246, 0.2);
-      color: #4a9eff;
-    }
+    .user .avatar { background: #1a1b26; border: 1px solid #3b82f6; box-shadow: 0 0 10px rgba(59, 130, 246, 0.2); color: #4a9eff; }
     .user .avatar svg { width: 18px; height: 18px; }
     
     .message-content { padding: 12px 16px; border-radius: 14px; font-size: 15px; line-height: 1.5; word-wrap: break-word; white-space: pre-wrap; }
@@ -99,7 +85,6 @@
   </div>
 
   <div class="chat-container" id="chatContainer">
-    <!-- Initial Message -->
     <div class="message ai">
       <div class="avatar">
         <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>
@@ -257,12 +242,9 @@
       
       const avatarDiv = document.createElement('div'); avatarDiv.classList.add('avatar');
       
-      // 🟢 Premium SVGs for Chat Messages
       if (sender === 'user') {
-        // User Avatar: Clean User outline
         avatarDiv.innerHTML = `<svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>`;
       } else {
-        // Jarvis Avatar: Futuristic Hexagon
         avatarDiv.innerHTML = `<svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>`;
       }
       
@@ -309,17 +291,29 @@
       
       let messageContent = text;
       let modelToUse = "openai/gpt-oss-120b";
+      let messagesPayload = [];
 
       if (currentImage) {
-        modelToUse = "llama-3.2-11b-vision-preview";
+        // 🟢 নতুন ভিশন মডেল ব্যবহার
+        modelToUse = "qwen/qwen3.8-27b"; 
         messageContent = [
           { type: "text", text: text || "Describe this image." },
           { type: "image_url", image_url: { url: currentImage } }
         ];
+        // 🟢 ছবির ক্ষেত্রে chatHistory বাদ দেওয়া হলো
+        messagesPayload = [
+          { role: "system", content: "You are Jarvis, a highly intelligent AI assistant. Analyze the image carefully." },
+          { role: "user", content: messageContent }
+        ];
+      } else {
+        // 🟢 টেক্সটের ক্ষেত্রে chatHistory ব্যবহার করা হলো
+        chatHistory.push({ role: "user", content: text });
+        messagesPayload = [
+          { role: "system", content: "You are Jarvis, a highly intelligent AI assistant. You excel at coding and writing. You are helpful, concise, and professional. Always format code clearly." },
+          ...chatHistory
+        ];
       }
 
-      chatHistory.push({ role: "user", content: messageContent });
-      
       chatInput.value = ''; chatInput.style.height = 'auto';
       removeImageBtn.click(); 
       
@@ -331,11 +325,9 @@
           headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
           body: JSON.stringify({
             model: modelToUse,
-            messages: [
-              { role: "system", content: "You are Jarvis, a highly intelligent AI assistant. You excel at coding and writing. You are helpful, concise, and professional. If an image is provided, analyze it carefully. Always format code clearly." },
-              ...chatHistory
-            ],
-            temperature: 0.7, max_tokens: 2048
+            messages: messagesPayload, // 🟢 ডাইনামিক পেলোড
+            temperature: 0.7, 
+            max_tokens: 2048
           })
         });
 
@@ -345,7 +337,10 @@
         const aiResponse = data.choices[0].message.content;
         removeTypingIndicator();
         addMessage(aiResponse, 'ai');
-        chatHistory.push({ role: "assistant", content: aiResponse });
+        
+        if (!currentImage) {
+          chatHistory.push({ role: "assistant", content: aiResponse });
+        }
         
         speakText(aiResponse);
       } catch (error) {
