@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Jarvis AI</title>
   <link rel="manifest" href="manifest-Jarvis.json">
   <meta name="theme-color" content="#0f0f15">
@@ -28,7 +28,7 @@
     body {
       background-color: var(--bg-color);
       color: var(--text-main);
-      height: 100vh;
+      height: 100dvh; /* 🟢 FIX: 100dvh fixes the mobile viewport issue */
       display: flex;
       flex-direction: column;
       overflow: hidden;
@@ -43,6 +43,7 @@
       background-color: var(--bg-color);
       border-bottom: 1px solid #1f2937;
       z-index: 10;
+      flex-shrink: 0; /* Prevents header from shrinking */
     }
 
     .header h1 {
@@ -64,6 +65,7 @@
     /* ===== Chat Container ===== */
     .chat-container {
       flex: 1;
+      min-height: 0; /* 🟢 FIX: Essential for flexbox scrolling to work inside body */
       overflow-y: auto;
       padding: 20px;
       display: flex;
@@ -101,7 +103,7 @@
       font-size: 15px;
       line-height: 1.5;
       word-wrap: break-word;
-      white-space: pre-wrap; /* For code blocks and line breaks */
+      white-space: pre-wrap; 
     }
 
     .user .message-content {
@@ -126,26 +128,28 @@
 
     /* ===== Input Area ===== */
     .input-area {
-      padding: 15px 20px 25px 20px;
+      padding: 10px 15px;
+      padding-bottom: calc(10px + env(safe-area-inset-bottom, 15px)); /* 🟢 FIX: Keeps input above mobile navigation bar */
       background-color: var(--bg-color);
+      flex-shrink: 0; /* 🟢 FIX: Prevents input area from being squeezed */
     }
 
     .input-box {
       background-color: var(--surface-color);
       border: 1px solid #2a3142;
       border-radius: 25px;
-      padding: 10px 15px;
+      padding: 8px 12px;
       display: flex;
       align-items: flex-end;
-      gap: 10px;
+      gap: 8px;
       box-shadow: 0 4px 20px rgba(0,0,0,0.3);
     }
 
     .input-box textarea {
       flex: 1;
       background: none; border: none; color: var(--text-main);
-      font-size: 15px; resize: none; max-height: 120px;
-      outline: none; padding-top: 8px;
+      font-size: 15px; resize: none; max-height: 100px;
+      outline: none; padding-top: 8px; line-height: 1.4;
     }
 
     .input-box textarea::placeholder { color: var(--text-muted); }
@@ -155,6 +159,7 @@
       font-size: 22px; cursor: pointer; padding: 5px;
       display: flex; justify-content: center; align-items: center;
       transition: all 0.2s;
+      margin-bottom: 2px;
     }
 
     .action-btn:hover { color: var(--text-main); }
@@ -177,6 +182,7 @@
       display: flex; justify-content: center; align-items: center;
       font-size: 16px; border: none; cursor: pointer;
       transition: 0.2s;
+      margin-bottom: 2px;
     }
 
     .send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -252,9 +258,9 @@
 
     // State
     let apiKey = localStorage.getItem('jarvis_groq_key') || "";
-    let isVoiceMode = false;
+    let isVoiceMode = false; // Set to true if you want it to always speak out loud
     let isRecording = false;
-    let chatHistory = []; // Store conversation context
+    let chatHistory = []; 
     
     // Speech Recognition (Voice Input)
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -262,20 +268,19 @@
     if (SpeechRecognition) {
       recognition = new SpeechRecognition();
       recognition.continuous = false;
-      recognition.lang = 'en-US'; // You can change to 'bn-BD' for Bengali
+      recognition.lang = 'en-US'; // Change to 'bn-BD' for Bengali
       recognition.interimResults = false;
 
       recognition.onstart = () => {
         isRecording = true;
         voiceBtn.classList.add('voice-active');
-        voiceBtn.innerText = '🛑'; // Stop icon
+        voiceBtn.innerText = '🛑'; 
         chatInput.placeholder = "Listening...";
       };
 
       recognition.onresult = (event) => {
         const transcript = event.results[0][0].transcript;
         chatInput.value = transcript;
-        // Auto-send if in voice mode
         if (isVoiceMode) {
           handleSend();
         }
@@ -300,9 +305,8 @@
 
     // Text to Speech (Voice Output)
     function speakText(text) {
-      if (!isVoiceMode || !('speechSynthesis' in window)) return;
+      if (!('speechSynthesis' in window)) return;
       
-      // Remove emojis and markdown for cleaner speech
       const cleanText = text.replace(/[*#`_]/g, '').replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '');
       
       const utterance = new SpeechSynthesisUtterance(cleanText);
@@ -323,7 +327,6 @@
         return;
       }
 
-      // Start listening
       try {
         recognition.start();
       } catch(e) {
@@ -343,7 +346,6 @@
       const contentDiv = document.createElement('div');
       contentDiv.classList.add('message-content');
       
-      // Basic markdown parsing for code blocks
       let formattedText = text.replace(/```([\s\S]*?)```/g, '<br><code>$1</code><br>');
       contentDiv.innerHTML = formattedText;
 
@@ -351,7 +353,6 @@
       msgDiv.appendChild(contentDiv);
       chatContainer.appendChild(msgDiv);
       
-      // Scroll to bottom
       chatContainer.scrollTop = chatContainer.scrollHeight;
     }
 
@@ -385,21 +386,17 @@
       const text = chatInput.value.trim();
       if (!text) return;
 
-      // Check API Key
       if (!apiKey) {
         alert("Please set your Groq API Key in Settings first! (Click the ⚙️ icon)");
         return;
       }
 
-      // UI Update
       addMessage(text, 'user');
       chatInput.value = '';
       chatInput.style.height = 'auto';
       
-      // Save to history
       chatHistory.push({ role: "user", content: text });
       
-      // Show loading
       sendBtn.disabled = true;
       showTypingIndicator();
 
@@ -411,7 +408,7 @@
             "Content-Type": "application/json"
           },
           body: JSON.stringify({
-            model: "llama3-70b-8192", // Powerful model for coding/writing
+            model: "llama3-70b-8192", 
             messages: [
               { 
                 role: "system", 
@@ -436,7 +433,7 @@
         addMessage(aiResponse, 'ai');
         chatHistory.push({ role: "assistant", content: aiResponse });
         
-        // Speak if voice mode is on
+        // Auto speak if user wants
         speakText(aiResponse);
 
       } catch (error) {
