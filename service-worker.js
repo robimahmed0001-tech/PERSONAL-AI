@@ -1,4 +1,4 @@
-const CACHE_NAME = "jarvis-cache-v5"; // 🟢 এখানে v3 করে দিও
+const CACHE_NAME = "jarvis-cache-v6"; // 🟢 এখানে v3 করে দিও
 const urlsToCache = [
   "./",
   "./index.html",
